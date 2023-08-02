@@ -1,4 +1,192 @@
+<#
+Function Parse-IniFile ($file) {
+  $ini = @{}
 
+  # Create a default section if none exist in the file. Like a java prop file.
+  $section = "NO_SECTION"
+  $ini[$section] = @{}
+
+  switch -regex -file $file {
+    "^\[(.+)\]$" {
+      $section = $matches[1].Trim()
+      $ini[$section] = @{}
+    }
+    "^\s*([^#].+?)\s*=\s*(.*)" {
+      $name,$value = $matches[1..2]
+      # skip comments that start with semicolon:
+      if (!($name.StartsWith(";"))) {
+        $ini[$section][$name] = $value.Trim()
+      }
+    }
+  }
+  $ini
+}
+
+$PSScriptRoot
+
+function Parse-IniFile ($filePath)
+{
+    $ini = [ordered]@{}
+    $count = @{}
+    switch -regex -file $filePath
+    {
+        #Section.
+        "^\[(.+)\]$"
+        {
+            $section = $matches[1].Trim()
+            $ini[$section] = [ordered]@{}
+            $count[$section] = @{}
+            $CommentCount = 0
+            continue
+        }
+        # Comment
+        "^(;.*)$"
+        {
+            $value = $matches[1]
+            $CommentCount = $CommentCount + 1
+            $name = "Comment" + $CommentCount
+            if ($section -eq $null) {
+                $section = "header"
+                $ini[$section] = [ordered]@{}
+            }
+            $ini[$section][$name] = $value
+            continue
+        }
+
+        #Array Int.
+        "^\s*([^#][\w\d_-]+?)\[]\s*=\s*(\d+)\s*$"
+        {
+            $name,$value = $matches[1..2]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            if (!$count[$section][$name]) {
+                $count[$section][$name] = 0
+            }
+            $ini[$section][$name].Add($count[$section][$name], [int]$value)
+            $count[$section][$name] += 1
+            continue
+        }
+        #Array Decimal
+        "^\s*([^#][\w\d_-]+?)\[]\s*=\s*(\d+\.\d+)\s*$"
+        {
+            $name,$value = $matches[1..2]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            if (!$count[$section][$name]) {
+                $count[$section][$name] = 0
+            }
+            $ini[$section][$name].Add($count[$section][$name], [decimal]$value)
+            $count[$section][$name] += 1
+            continue
+        }
+        #Array Everything else
+        "^\s*([^#][\w\d_-]+?)\[]\s*=\s*(.*)"
+        {
+            $name,$value = $matches[1..2]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            if (!$count[$section][$name]) {
+                $count[$section][$name] = 0
+            }
+            $ini[$section][$name].Add($count[$section][$name], $value.Trim())
+            $count[$section][$name] += 1
+            continue
+        }
+
+        #Array associated Int.
+        "^\s*([^#][\w\d_-]+?)\[([\w\d_-]+?)]\s*=\s*(\d+)\s*$"
+        {
+            $name, $association, $value = $matches[1..3]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            $ini[$section][$name].Add($association, [int]$value)
+            continue
+        }
+        #Array associated Decimal
+        "^\s*([^#][\w\d_-]+?)\[([\w\d_-]+?)]\s*=\s*(\d+\.\d+)\s*$"
+        {
+            $name, $association, $value = $matches[1..3]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            $ini[$section][$name].Add($association, [decimal]$value)
+            continue
+        }
+        #Array associated Everything else
+        "^\s*([^#][\w\d_-]+?)\[([\w\d_-]+?)]\s*=\s*(.*)"
+        {
+            $name, $association, $value = $matches[1..3]
+            if (!$ini[$section][$name]) {
+                $ini[$section][$name] = [ordered]@{}
+            }
+            $ini[$section][$name].Add($association, $value.Trim())
+            continue
+        }
+
+        #Int.
+        "^\s*([^#][\w\d_-]+?)\s*=\s*(\d+)\s*$"
+        {
+            $name,$value = $matches[1..2]
+            $ini[$section][$name] = [int64]$value
+            continue
+        }
+        #Decimal.
+        "^\s*([^#][\w\d_-]+?)\s*=\s*(\d+\.\d+)\s*$"
+        {
+            $name,$value = $matches[1..2]
+            $ini[$section][$name] = [decimal]$value
+            continue
+        }
+        #Everything else.
+        "^\s*([^#][\w\d_-]+?)\s*=\s*(.*)"
+        {
+            $name,$value = $matches[1..2]
+            $ini[$section][$name] = $value.Trim()
+            continue
+        }
+    }
+
+    return $ini
+}
+
+function Set-IniFile ($ini, $filePath)
+{
+    $output = @()
+    foreach($section in $ini.Keys)
+    {
+        # Put a newline before category as seperator, only if there is null 
+        $seperator = if ($output[$output.Count - 1] -eq $null) { } else { "`n" }
+        $output += $seperator + "[$section]";
+
+        foreach($key in $ini.$section.Keys)
+        {
+            if ( $key.StartsWith('Comment') )
+            {
+                $output += $ini.$section.$key
+            }
+            elseif ($ini.$section.$key -is [System.Collections.Specialized.OrderedDictionary]) {
+                foreach($subkey in $ini.$section.$key.Keys) {
+                    if ($subkey -is [int]) {
+                        $output += "$key[] = " + $ini.$section.$key.$subkey
+                    } else {
+                        $output += "$key[$subkey] = " + $ini.$section.$key.$subkey
+                    }
+                }
+            }
+            else
+            {
+                $output += "$key = " + $ini.$section.$key
+            }
+        }
+    }
+
+    $output | Set-Content $filePath -Force
+}
+#>
 function New-UUID($Wrap_With_Brackets = $False){
 
     For($Index = 0;$Index -lt 16;$Index ++){
@@ -55,6 +243,9 @@ function Get-IniContent ($filePath)
 }
 
 $icons = @("SSH","Telnet","Rsh","Xdmcp","RDP","VNC","FTP","SFTP","Serial","File","Shell","Browser","Mosh","Aws S3","WSL")
+$resolutions = @("FitToWindow","Fullscreen","SmartSAspect","Res640x480","Res800x600","Res1024x768","Res1152x864","Res1280x720","Res1280x968","Res1280x1024","Res1400x1050","Res1600x1200","Res1920x1080","Res1276x936","Res1916x988","Res1920x1200","Res1280x800","Res1360x768","Res1366x768","Res1440x900","Res1536x864","Res1600x900","Res1680x1050","Res2048x1152","Res2560x1080","Res2560x1440","Res3440x1440","Res3840x2160")
+$couleurs = @("auto","Colors8Bit","Colors16Bit","Colors24Bit","Colors32Bit")
+
 $ini = Get-IniContent -filePath ".\MobaXterm.ini"
 $Groups = ($ini.GetEnumerator() | Where-Object { $_.Name -Like  "bookmarks*" }) | Sort-Object {[int64]$($_.Name.ToString()).Split('_')[1]}
 $Credentials = ($ini.GetEnumerator() | Where-Object { $_.Name -Like  "Credentials" })
@@ -160,24 +351,39 @@ foreach ($sections in $groups| ForEach { $_.Name}){
                     $login = $login.Split('@')[0]
                 }
 
-                Write-Host "    $key"
-                Write-Host "      $icon"
-                Write-Host "      $type"
-                Write-Host "      $hote"
-                Write-Host "      $port"
-                Write-Host "      $account"
-                Write-Host "      $Login"
-                Write-Host "      $password"
-                
+                #$resolution = ($valeur.Split("#")[2]).split("%")[10]
+                if (($valeur.Split("#")[2]).split("%")[10] -ne $null){
+                    $resolution = $($resolutions[($valeur.Split("#")[2]).split("%")[10]])
+                }else{
+                    $resolution = $($resolutions[0])
+                }
+                if (($valeur.Split("#")[2]).split("%")[22] -ne $null){
+                    $couleur = $($couleurs[($valeur.Split("#")[2]).split("%")[22]])
+                }else{
+                    $couleur = $($couleurs[2])
+                }
+
+                Write-Host "Nom        : $key"
+                Write-Host "  Icon       : $icon"
+                Write-Host "  Type       : $type"
+                Write-Host "  Hote       : $hote"
+                Write-Host "  Port       : $port"
+                Write-Host "  Compte     : $account"
+                Write-Host "  Login      : $Login"
+                Write-Host "  password   : $password"
+                Write-Host "  Domaine    : $domain"
+                Write-Host "  Resolution : $resolution"
+                Write-Host "  Couleur    : $couleur"
+
                 #$password = ""
                 #$domain = ""
                 $UUID = New-UUID
                 #$mRemoteNG = $mRemoteNG + "$($key);$($($UUID));$($parent);Connection;;$($icon);General;$($login);$($password);;$($hote);$($type);Default Settings;$($port);False;True;IE;EncrBasic;NoAuth;;Colors16Bit;FitToWindow;True;False;False;False;False;False;False;False;False;False;DoNotPlay;False;;;;;;CompNone;EncHextile;AuthVNC;ProxyNone;;0;;;ColNormal;SmartSAspect;False;Never;;Yes;;;;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;`r`n"
                 
                 #new
-                $mRemoteNG_New = $mRemoteNG_New + "$($key);$($($UUID));$($parent);Connection;;$($icon);General;$($login);$($password);$($domain);$($hote);$($port);;$($type);;;;Default Settings;False;True;False;False;False;False;EdgeChromium;NoAuth;;Colors16Bit;FitToWindow;True;False;False;False;False;False;False;False;False;False;False;False;False;False;False;DoNotPlay;False;;;;;;False;CompNone;EncHextile;AuthVNC;ProxyNone;;0;;;ColNormal;SmartSAspect;False;Never;;Yes;;;;None;;False;Rdc6;;;;;eu-central-1;None;None;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;`r`n"
+                $mRemoteNG_New = $mRemoteNG_New + "$($key);$($($UUID));$($parent);Connection;;$($icon);General;$($login);$($password);$($domain);$($hote);$($port);;$($type);;;;Default Settings;False;True;False;False;False;False;EdgeChromium;NoAuth;;$($couleur);$($resolution);True;False;False;False;False;False;False;False;False;False;False;False;False;False;False;DoNotPlay;False;;;;;;False;CompNone;EncHextile;AuthVNC;ProxyNone;;0;;;ColNormal;SmartSAspect;False;Never;;Yes;;;;None;;False;Rdc6;;;;;eu-central-1;None;None;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;`r`n"
                 #old
-                $mRemoteNG_Old = $mRemoteNG_Old + "$($key);$($($UUID));$($parent);Connection;;$($icon);General;$($login);$($password);$($domain);$($hote);$($type);Default Settings;$($port);False;True;IE;EncrBasic;NoAuth;;Colors16Bit;FitToWindow;True;False;False;False;False;False;False;False;False;False;DoNotPlay;False;;;;;;CompNone;EncHextile;AuthVNC;ProxyNone;;0;;;ColNormal;SmartSAspect;False;Never;;Yes;;;;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;`r`n"
+                $mRemoteNG_Old = $mRemoteNG_Old + "$($key);$($($UUID));$($parent);Connection;;$($icon);General;$($login);$($password);$($domain);$($hote);$($type);Default Settings;$($port);False;True;IE;EncrBasic;NoAuth;;$($couleur);$($resolution);True;False;False;False;False;False;False;False;False;False;DoNotPlay;False;;;;;;CompNone;EncHextile;AuthVNC;ProxyNone;;0;;;ColNormal;SmartSAspect;False;Never;;Yes;;;;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;`r`n"
                 $SessionCount = $SessionCount + 1
                 #Write-Host "Section : $key, Valeur : $valeur"
             }
