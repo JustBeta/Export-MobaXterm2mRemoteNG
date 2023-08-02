@@ -9,10 +9,10 @@ donc, 2 solution s'offres a vous:
 - https://github.com/xillwillx/MobaXterm-Decryptor (ne gere pas le Master Password)
 - soit modifié les hash de la section [Credentials] en les remplacants avec les passe en clair.
 
-Exemple:
-[Credentials]
-Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==
-en:
+Exemple:<br>
+[Credentials]<br>
+Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==<br>
+en:<br>
 Admin Domain=domain\Adminnistrateur:LePassEnClair
 
 ce changement permet de mettre a jour les passwords dans toutes les connexions.
@@ -29,10 +29,10 @@ So, you have two options:
  - Use the MobaXterm password decryptor available at: https://github.com/xillwillx/MobaXterm-Decryptor (Note: It does not handle the Master Password).
  - Manually update the hashes in the [Credentials] section by replacing them with clear text passwords.
    
-Example:
-[Credentials]
-Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==
-With:
+Example:<br>
+[Credentials]<br>
+Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==<br>
+With:<br>
 Admin Domain=domain\Adminnistrateur:PlainTextPassword
 
 By making this change, you can update passwords for all connections.
