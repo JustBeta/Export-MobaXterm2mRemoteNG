@@ -11,9 +11,9 @@ donc, 2 solution s'offres a vous:
 
 Exemple:<br>
 [Credentials]<br>
-Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==<br>
+Admin Domain=domain\Administrateur:jXQpOwGai1Ydfg==<br>
 en:<br>
-Admin Domain=domain\Adminnistrateur:LePassEnClair
+Admin Domain=domain\Administrateur:LePassEnClair
 
 ce changement permet de mettre a jour les passwords dans toutes les connexions.
 
@@ -31,8 +31,8 @@ So, you have two options:
    
 Example:<br>
 [Credentials]<br>
-Admin Domain=domain\Adminnistrateur:jXQpOwGai1Ydfg==<br>
+Admin Domain=domain\Administrator:jXQpOwGai1Ydfg==<br>
 With:<br>
-Admin Domain=domain\Adminnistrateur:PlainTextPassword
+Admin Domain=domain\Administrator:PlainTextPassword
 
 By making this change, you can update passwords for all connections.
