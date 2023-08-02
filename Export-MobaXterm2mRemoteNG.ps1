@@ -299,9 +299,21 @@ foreach ($sections in $groups| ForEach { $_.Name}){
             }elseif ($key -eq "ImgNum"){
             }else{
                 $type = $valeur.Split("#")[1]
+                if($type -eq "84"){$type = "FILE"} # non gerer
+                if($type -eq "88"){$type = "XDMPC"} # non gerer
                 if($type -eq "91"){$type = "RDP"}
+                if($type -eq "98"){$type = "TELNET"} # non gerer
+                if($type -eq "100"){$type = "RSH"} # non gerer
                 if($type -eq "109"){$type = "SSH2"}
+                if($type -eq "128"){$type = "VNC"}
+                if($type -eq "130"){$type = "FTP"} # non gerer
+                if($type -eq "131"){$type = "SERIAL"} # non gerer
+                if($type -eq "140"){$type = "SFTP"} # non gerer
+                if($type -eq "145"){$type = "MOSH"} # non gerer
+                if($type -eq "151"){$type = "WSL"} # non gerer
+                if($type -eq "204"){$type = "BASH"} # non gerer
                 if($type -eq "313"){$type = "HTTPS"}
+                if($type -eq "343"){$type = "AWS-S3"} # non gerer
 
                 $icon = $($icons[($valeur.Split("#")[2]).split("%")[0]])
                 
@@ -330,6 +342,8 @@ foreach ($sections in $groups| ForEach { $_.Name}){
                         $port = "443"
                     }elseif($type -eq "HTTP"){
                         $port = "80"
+                    }elseif($type -eq "VNC"){
+                        $port = "5900"
                     }
                 }
                 $account = ($valeur.Split("#")[2]).split("%")[3]
