@@ -1,4 +1,4 @@
-# Export-MobaXtern2mRemoteNG
+# Export-MobaXterm2mRemoteNG
 conversion du fichier ini de MobaXterm au format MRemoteNG
 
 Pour l'instant, ce script ne prend en charge que les types de conexions que j'utilise.
